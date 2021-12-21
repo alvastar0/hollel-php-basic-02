@@ -19,12 +19,34 @@ if (empty($_POST['password'])) {
 
 if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
     set_error_message('Неверный формат e-mail.');
-
     header('Location: /15/register.php');
-
     exit;
 }
 
 $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
 $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 $name = trim(strip_tags(htmlspecialchars($_POST['name'], ENT_QUOTES | ENT_HTML5))) ?: null;
+
+$database = database_connect();
+
+$statement = $database->prepare('SELECT `id` FROM `users` WHERE `email` = :email');
+
+$statement->execute(['email' => $email]);
+
+if ($statement->rowCount()) {
+    set_error_message('Пользователь с таким e-mail уже существует.');
+    header('Location: /15/register.php');
+    exit;
+}
+
+$statement = $database->prepare(
+    'INSERT INTO `users` (`email`, `password`, `name`) VALUES (:email, :password, :name)'
+);
+
+$statement->execute([
+    'email' => $email,
+    'password' => $password,
+    'name' => $name
+]);
+
+header('Location: /15/login.php');
